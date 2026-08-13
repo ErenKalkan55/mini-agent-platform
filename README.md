@@ -30,10 +30,17 @@ pip install -r backend\requirements.txt
 docker compose up -d
 ```
 
-4. Migration komutlari (`backend` klasorunden):
+4. Migration ve API (`backend` klasorunden):
 
 ```bash
 cd backend
-alembic revision --autogenerate -m "mesaj"
 alembic upgrade head
+uvicorn app.main:app --reload
 ```
+
+Auth endpoint'leri:
+
+- `POST /api/v1/auth/register` — email, password, tenant_name
+- `POST /api/v1/auth/login` — email, password; JWT doner
+- `GET /api/v1/auth/me` — Authorization: Bearer <token>
+- Swagger: http://127.0.0.1:8000/docs
