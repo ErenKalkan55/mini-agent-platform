@@ -52,3 +52,14 @@ Agent endpoint'leri (JWT gerekir):
 - `PATCH /api/v1/agents/{id}`
 - `DELETE /api/v1/agents/{id}`
 - Swagger: http://127.0.0.1:8000/docs
+
+5. Arayuz (ayri terminal):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Tarayici: http://127.0.0.1:5173
+Login ve kayit ayni kartta. Agent olusturma / liste / silme giris sonrasi acilir.
