@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.agent import Agent
     from app.models.user import User
 
 
@@ -25,3 +26,4 @@ class Tenant(Base):
     )
 
     users: Mapped[list[User]] = relationship(back_populates="tenant")
+    agents: Mapped[list[Agent]] = relationship(back_populates="tenant")

@@ -43,4 +43,12 @@ Auth endpoint'leri:
 - `POST /api/v1/auth/register` — email, password, tenant_name
 - `POST /api/v1/auth/login` — email, password; JWT doner
 - `GET /api/v1/auth/me` — Authorization: Bearer <token>
+
+Agent endpoint'leri (JWT gerekir):
+
+- `POST /api/v1/agents` — name, system_prompt, model, temperature
+- `GET /api/v1/agents` — tenant'a ait liste
+- `GET /api/v1/agents/{id}`
+- `PATCH /api/v1/agents/{id}`
+- `DELETE /api/v1/agents/{id}`
 - Swagger: http://127.0.0.1:8000/docs
