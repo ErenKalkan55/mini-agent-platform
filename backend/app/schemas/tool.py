@@ -1,9 +1,10 @@
 import re
 from datetime import datetime
 from typing import Any, Literal
-from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator
+
+from app.core.net import validate_public_http_url
 
 NAME_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 ARG_TYPES = {"string", "integer", "number", "boolean"}
@@ -50,10 +51,7 @@ class ToolCreate(BaseModel):
     @field_validator("url")
     @classmethod
     def url_must_be_http(cls, value: str) -> str:
-        parsed = urlparse(value)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise ValueError("URL must start with http:// or https://")
-        return value
+        return validate_public_http_url(value, allow_placeholders=True)
 
     @field_validator("argument_schema")
     @classmethod
