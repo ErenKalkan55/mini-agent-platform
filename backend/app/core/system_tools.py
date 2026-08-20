@@ -76,7 +76,29 @@ SYSTEM_TOOLS = [
 ]
 
 SYSTEM_TOOL_NAMES = {item.name for item in SYSTEM_TOOLS}
+DEFAULT_SYSTEM_TOOLS = [item.name for item in SYSTEM_TOOLS]
 
 
 def list_system_tools() -> list[StructuredTool]:
     return list(SYSTEM_TOOLS)
+
+
+def parse_system_tools(value: list[str]) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError("system_tools must be a list")
+    seen: list[str] = []
+    for name in value:
+        if not isinstance(name, str) or name not in SYSTEM_TOOL_NAMES:
+            raise ValueError(f"unknown system tool: {name}")
+        if name not in seen:
+            seen.append(name)
+    return seen
+
+
+def tools_from_names(names: list[str] | None) -> list[StructuredTool]:
+    if names is None:
+        chosen = DEFAULT_SYSTEM_TOOLS
+    else:
+        chosen = [name for name in names if name in SYSTEM_TOOL_NAMES]
+    lookup = {item.name: item for item in SYSTEM_TOOLS}
+    return [lookup[name] for name in chosen]

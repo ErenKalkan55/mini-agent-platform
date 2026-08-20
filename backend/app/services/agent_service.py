@@ -24,6 +24,7 @@ def _agent_payload(agent: Agent) -> dict:
         "system_prompt": agent.system_prompt,
         "model": agent.model,
         "temperature": agent.temperature,
+        "system_tools": list(agent.system_tools or []),
     }
 
 
@@ -46,7 +47,7 @@ def get_agent(
 
 def get_agent_config(db: Session, *, tenant_id: int, agent_id: int) -> dict:
     cached = cache_get(agent_cache_key(tenant_id, agent_id))
-    if isinstance(cached, dict) and cached.get("id") == agent_id:
+    if isinstance(cached, dict) and cached.get("id") == agent_id and "system_tools" in cached:
         return cached
     return _agent_payload(get_agent(db, tenant_id=tenant_id, agent_id=agent_id))
 
@@ -58,6 +59,7 @@ def create_agent(db: Session, *, tenant_id: int, payload: AgentCreate) -> Agent:
         system_prompt=payload.system_prompt,
         model=payload.model.strip(),
         temperature=payload.temperature,
+        system_tools=payload.system_tools,
     )
     db.add(agent)
     db.commit()
