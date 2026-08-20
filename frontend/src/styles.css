@@ -107,7 +107,8 @@ h1 {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid var(--line);
   background: var(--field);
@@ -237,6 +238,113 @@ textarea {
   white-space: pre-wrap;
   margin: 8px 0 0;
   font-size: 14px;
+}
+
+.agent-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.agent-item-active {
+  border-color: var(--accent);
+}
+
+.chat-panel,
+.tools-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.chat-log {
+  flex: 1;
+  min-height: 240px;
+  max-height: 420px;
+  overflow-y: auto;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--field);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bubble {
+  max-width: 72%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.bubble p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+
+.bubble-role {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bubble-user {
+  align-self: flex-end;
+  background: #ece7f8;
+}
+
+.bubble-assistant {
+  align-self: flex-start;
+}
+
+.bubble-tool {
+  align-self: flex-start;
+  max-width: 100%;
+  background: #f4efe4;
+}
+
+.chat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.tool-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tool-item {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.tool-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+h3 {
+  margin: 8px 0 0;
+  font-size: 16px;
 }
 
 @media (max-width: 900px) {
