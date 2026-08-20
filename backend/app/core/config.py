@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     DEFAULT_MODEL: str = "anthropic/claude-haiku-4.5"
+    REDIS_URL: str = ""
 
 
 @lru_cache

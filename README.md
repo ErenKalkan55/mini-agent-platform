@@ -15,6 +15,7 @@ Staj projesi: JWT auth, tenant izolasyonu, agent CRUD, LangGraph agent + tool'la
 
 `.env` icinde `OPENROUTER_API_KEY` dolu olmali. Chat, agent kaydindaki system_prompt / model / temperature kullanir.
 Her agent `get_current_time` ve `calculator` sistem tool'larina sahiptir. Kullanici HTTP tool ekleyebilir.
+Redis opsiyoneldir: agent promptu ve HTTP tool listesi cache'lenir. Kaynak yine Postgres'tir; agent/tool degisince cache silinir. `REDIS_URL` bos veya Redis kapaliysa uygulama DB ile devam eder.
 
 ## Lokal kurulum (Faz 1)
 
@@ -27,7 +28,7 @@ python -m venv .venv
 pip install -r backend\requirements.txt
 ```
 
-3. Postgres'i baslatin:
+3. Postgres ve Redis'i baslatin:
 
 ```bash
 docker compose up -d
