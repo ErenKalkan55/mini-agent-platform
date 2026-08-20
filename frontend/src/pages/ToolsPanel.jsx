@@ -1,5 +1,6 @@
+import { useOutletContext } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { createTool, deleteTool, listSystemTools, listTools } from "../api";
+import { createTool, deleteTool, listSystemTools, listTools, updateAgent } from "../api";
 
 const emptyArg = { name: "", type: "string", required: false, description: "" };
 
@@ -29,7 +30,8 @@ function schemaFromArgs(rows) {
   return { type: "object", properties, required };
 }
 
-export default function ToolsPanel({ agent }) {
+export default function ToolsPanel() {
+  const { selectedAgent: agent, upsertAgent } = useOutletContext();
   const [systemTools, setSystemTools] = useState([]);
   const [tools, setTools] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -110,6 +112,23 @@ export default function ToolsPanel({ agent }) {
     }
   }
 
+  async function toggleSystemTool(name) {
+    if (!agent) {
+      return;
+    }
+    const current = agent.system_tools || [];
+    const next = current.includes(name)
+      ? current.filter((item) => item !== name)
+      : [...current, name];
+    setError("");
+    try {
+      const updated = await updateAgent(agent.id, { system_tools: next });
+      upsertAgent(updated);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   function updateArg(index, patch) {
     setArgs((rows) => rows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
   }
@@ -121,21 +140,31 @@ export default function ToolsPanel({ agent }) {
       <section>
         <div className="section-head">
           <div>
-            <p className="stat-label">Always on</p>
+            <p className="stat-label">Selected</p>
             <h2>System tools</h2>
           </div>
         </div>
         <ul className="tool-grid">
-          {systemTools.map((item) => (
-            <li key={item.name} className="entity-card">
-              <div className="entity-card-top">
-                <span className="entity-mark">S</span>
-                <span className="badge badge-ok">System</span>
-              </div>
-              <h3>{item.name}</h3>
-              <p className="muted prompt-preview">{item.description}</p>
-            </li>
-          ))}
+          {systemTools.map((item) => {
+            const enabled = (agent.system_tools || []).includes(item.name);
+            return (
+              <li key={item.name} className="entity-card">
+                <div className="entity-card-top">
+                  <span className="entity-mark">S</span>
+                  <span className={enabled ? "badge badge-ok" : "badge"}>
+                    {enabled ? "On" : "Off"}
+                  </span>
+                </div>
+                <h3>{item.name}</h3>
+                <p className="muted prompt-preview">{item.description}</p>
+                <div className="entity-card-actions">
+                  <button type="button" className="ghost" onClick={() => toggleSystemTool(item.name)}>
+                    {enabled ? "Disable" : "Enable"}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </section>
 

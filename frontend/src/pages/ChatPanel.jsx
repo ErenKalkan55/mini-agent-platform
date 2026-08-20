@@ -1,7 +1,9 @@
+import { useOutletContext } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { listConversations, listMessages, sendChat } from "../api";
 
-export default function ChatPanel({ agent }) {
+export default function ChatPanel() {
+  const { selectedAgent: agent } = useOutletContext();
   const [conversationId, setConversationId] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);

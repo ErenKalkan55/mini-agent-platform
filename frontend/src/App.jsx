@@ -1,11 +1,19 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { clearToken, getToken, me } from "./api";
+import { clearToken, getToken, me, subscribeAuthExpired } from "./api";
+import AppShell from "./layout/AppShell";
 import AgentsPage from "./pages/Agents";
+import ChatPanel from "./pages/ChatPanel";
 import LoginPage from "./pages/Login";
+import ToolsPanel from "./pages/ToolsPanel";
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(Boolean(getToken()));
+
+  useEffect(() => {
+    return subscribeAuthExpired(() => setUser(null));
+  }, []);
 
   useEffect(() => {
     if (!getToken()) {
@@ -30,12 +38,28 @@ export default function App() {
   }
 
   return (
-    <AgentsPage
-      user={user}
-      onLogout={() => {
-        clearToken();
-        setUser(null);
-      }}
-    />
+    <BrowserRouter>
+      <Routes>
+        <Route
+          element={
+            <AppShell
+              user={user}
+              onLogout={() => {
+                clearToken();
+                setUser(null);
+              }}
+            />
+          }
+        >
+          <Route path="/" element={<Navigate to="/agents" replace />} />
+          <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/tools" element={<ToolsPanel />} />
+          <Route path="/chat" element={<ChatPanel />} />
+          <Route path="/agents/:agentId/tools" element={<ToolsPanel />} />
+          <Route path="/agents/:agentId/chat" element={<ChatPanel />} />
+          <Route path="*" element={<Navigate to="/agents" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }

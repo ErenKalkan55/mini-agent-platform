@@ -240,6 +240,40 @@ textarea {
   color: var(--app-muted);
 }
 
+.tool-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.tool-pick-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.tool-pick-item span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.tool-pick-item strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-navy);
+}
+
 .app-shell .primary {
   background: var(--app-accent);
   text-transform: none;
@@ -345,9 +379,11 @@ textarea {
   font-size: 13px;
   font-weight: 500;
   text-align: left;
+  text-decoration: none;
   padding: 9px 10px;
   border-radius: 8px;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .nav-item svg {
