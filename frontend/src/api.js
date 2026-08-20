@@ -65,6 +65,14 @@ export function createAgent(payload) {
   return request("/api/v1/agents", { method: "POST", body: payload, auth: true });
 }
 
+export function updateAgent(agentId, payload) {
+  return request(`/api/v1/agents/${agentId}`, {
+    method: "PATCH",
+    body: payload,
+    auth: true,
+  });
+}
+
 export function deleteAgent(agentId) {
   return request(`/api/v1/agents/${agentId}`, { method: "DELETE", auth: true });
 }

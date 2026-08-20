@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createAgent, deleteAgent, listAgents } from "../api";
+import { createAgent, deleteAgent, listAgents, updateAgent } from "../api";
 import ChatPanel from "./ChatPanel";
 import ToolsPanel from "./ToolsPanel";
 
@@ -16,6 +16,7 @@ export default function AgentsPage({ user, onLogout }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [editingAgent, setEditingAgent] = useState(null);
 
   async function refresh() {
     const data = await listAgents();
@@ -26,16 +27,43 @@ export default function AgentsPage({ user, onLogout }) {
     refresh().catch((err) => setError(err.message));
   }, []);
 
-  async function handleCreate(event) {
+  function startEdit(agent) {
+    setEditingAgent(agent);
+    setForm({
+      name: agent.name,
+      system_prompt: agent.system_prompt,
+      model: agent.model,
+      temperature: agent.temperature,
+    });
+    setError("");
+  }
+
+  function cancelEdit() {
+    setEditingAgent(null);
+    setForm(emptyForm);
+    setError("");
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault();
     setError("");
     setBusy(true);
+    const payload = {
+      ...form,
+      temperature: Number(String(form.temperature).replace(",", ".")),
+    };
     try {
-      await createAgent({
-        ...form,
-        temperature: Number(form.temperature),
-      });
-      setForm(emptyForm);
+      if (editingAgent) {
+        const updated = await updateAgent(editingAgent.id, payload);
+        if (selectedAgent?.id === updated.id) {
+          setSelectedAgent(updated);
+        }
+        setEditingAgent(null);
+        setForm(emptyForm);
+      } else {
+        await createAgent(payload);
+        setForm(emptyForm);
+      }
       await refresh();
     } catch (err) {
       setError(err.message);
@@ -50,6 +78,9 @@ export default function AgentsPage({ user, onLogout }) {
       await deleteAgent(agentId);
       if (selectedAgent?.id === agentId) {
         setSelectedAgent(null);
+      }
+      if (editingAgent?.id === agentId) {
+        cancelEdit();
       }
       await refresh();
     } catch (err) {
@@ -72,8 +103,8 @@ export default function AgentsPage({ user, onLogout }) {
 
       <main className="layout">
         <section className="panel">
-          <h2>Create agent</h2>
-          <form className="stack" onSubmit={handleCreate}>
+          <h2>{editingAgent ? "Edit agent" : "Create agent"}</h2>
+          <form className="stack" onSubmit={handleSubmit}>
             <label className="field">
               <span>Name</span>
               <input
@@ -117,8 +148,13 @@ export default function AgentsPage({ user, onLogout }) {
             </label>
             {error ? <p className="error">{error}</p> : null}
             <button className="primary" type="submit" disabled={busy}>
-              {busy ? "Saving" : "Create agent"}
+              {busy ? "Saving" : editingAgent ? "Save agent" : "Create agent"}
             </button>
+            {editingAgent ? (
+              <button type="button" className="ghost" onClick={cancelEdit}>
+                Cancel
+              </button>
+            ) : null}
           </form>
         </section>
 
@@ -145,6 +181,9 @@ export default function AgentsPage({ user, onLogout }) {
                   <div className="agent-actions">
                     <button type="button" className="ghost" onClick={() => setSelectedAgent(agent)}>
                       Chat
+                    </button>
+                    <button type="button" className="ghost" onClick={() => startEdit(agent)}>
+                      Edit
                     </button>
                     <button type="button" className="ghost" onClick={() => handleDelete(agent.id)}>
                       Delete
