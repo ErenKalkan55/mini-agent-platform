@@ -1,13 +1,13 @@
 import re
 
-from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from app.services.errors import ConflictError, UnauthorizedError
 
 
 def _slugify(value: str) -> str:
@@ -26,14 +26,19 @@ def _unique_slug(db: Session, base: str) -> str:
     return slug
 
 
+def get_user_by_id(db: Session, user_id: int) -> User | None:
+    return db.scalar(
+        select(User)
+        .where(User.id == user_id)
+        .options(selectinload(User.tenant))
+    )
+
+
 def register_user(db: Session, payload: RegisterRequest) -> User:
     email = payload.email.strip().lower()
     existing = db.scalar(select(User).where(User.email == email))
     if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
-        )
+        raise ConflictError("Email already registered")
 
     tenant = Tenant(
         name=payload.tenant_name.strip(),
@@ -54,10 +59,7 @@ def login_user(db: Session, payload: LoginRequest) -> TokenResponse:
     email = payload.email.strip().lower()
     user = db.scalar(select(User).where(User.email == email))
     if user is None or not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
+        raise UnauthorizedError("Invalid email or password")
     token = create_access_token(user_id=user.id, tenant_id=user.tenant_id)
     return TokenResponse(access_token=token)
 

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qsl, quote, urlencode, urlparse, urlunparse
 
 import httpx
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field, create_model
 
+from app.core.net import validate_public_http_url
 from app.models.tool import AgentTool
 
 _TYPE_MAP = {
@@ -43,15 +44,17 @@ def execute_http_tool(*, method: str, url: str, arguments: dict[str, Any]) -> st
     for key, value in list(remaining.items()):
         token = "{" + key + "}"
         if token in filled:
-            filled = filled.replace(token, str(value))
+            filled = filled.replace(token, quote(str(value), safe=""))
             remaining.pop(key)
 
-    parsed = urlparse(filled)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        return "Tool error: only http and https URLs are allowed."
-
     try:
-        with httpx.Client(timeout=_TIMEOUT, follow_redirects=True) as client:
+        validate_public_http_url(filled, allow_placeholders=False)
+    except ValueError as exc:
+        return f"Tool error: {exc}"
+
+    parsed = urlparse(filled)
+    try:
+        with httpx.Client(timeout=_TIMEOUT, follow_redirects=False) as client:
             if method == "GET":
                 extra = [(key, str(value)) for key, value in remaining.items() if value is not None]
                 query = list(parse_qsl(parsed.query, keep_blank_values=True)) + extra
@@ -66,18 +69,29 @@ def execute_http_tool(*, method: str, url: str, arguments: dict[str, Any]) -> st
     except httpx.HTTPError as exc:
         return f"Tool error: request failed ({exc.__class__.__name__})"
 
+    if response.is_redirect:
+        return "Tool error: redirects are not allowed."
+
     body = response.text[:_MAX_BODY]
     if response.status_code >= 400:
         return f"Tool error: HTTP {response.status_code}: {body}"
     return body or f"HTTP {response.status_code} empty body"
 
 
-def http_record_to_tool(record: AgentTool) -> StructuredTool:
-    args_model = schema_to_model(f"HttpTool{record.id}Args", record.argument_schema or {})
-    method = record.method
-    url = record.url
-    name = record.name
-    description = record.description
+def http_record_to_tool(record: AgentTool | dict[str, Any]) -> StructuredTool:
+    data = record if isinstance(record, dict) else {
+        "id": record.id,
+        "name": record.name,
+        "description": record.description,
+        "method": record.method,
+        "url": record.url,
+        "argument_schema": record.argument_schema,
+    }
+    args_model = schema_to_model(f"HttpTool{data['id']}Args", data.get("argument_schema") or {})
+    method = data["method"]
+    url = data["url"]
+    name = data["name"]
+    description = data["description"]
 
     def _run(**kwargs: Any) -> str:
         cleaned = {key: value for key, value in kwargs.items() if value is not None}

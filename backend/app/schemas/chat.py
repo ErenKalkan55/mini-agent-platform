@@ -12,6 +12,9 @@ class MessageResponse(BaseModel):
     id: int
     role: str
     content: str
+    tool_name: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -35,3 +38,5 @@ class ChatResponse(BaseModel):
     reply: str
     messages: list[MessageResponse]
     tool_events: list[ToolEvent] = []
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None

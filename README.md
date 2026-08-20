@@ -17,6 +17,8 @@ Staj projesi: JWT auth, tenant izolasyonu, agent CRUD, LangGraph agent + tool'la
 Her agent `get_current_time` ve `calculator` sistem tool'larina sahiptir. Kullanici HTTP tool ekleyebilir.
 Redis opsiyoneldir: agent promptu ve HTTP tool listesi cache'lenir. Kaynak yine Postgres'tir; agent/tool degisince cache silinir. `REDIS_URL` bos veya Redis kapaliysa uygulama DB ile devam eder.
 
+Kisa sureli hafiza son 20 user/assistant mesajini LLM'e tasir. Daha eski turlar sessizce dusurulur; tool izleri ve token sayilari veritabaninda kalir. HTTP tool URL'leri localhost / ozel ag adreslerine acilmaz.
+
 ## Lokal kurulum (Faz 1)
 
 1. `.env.example` dosyasini kopyalayip `.env` yapin.

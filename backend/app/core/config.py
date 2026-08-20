@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     DEFAULT_MODEL: str = "anthropic/claude-haiku-4.5"
     REDIS_URL: str = ""
+    ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        return [item.strip() for item in self.ALLOWED_ORIGINS.split(",") if item.strip()]
 
 
 @lru_cache

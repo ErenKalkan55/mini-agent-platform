@@ -1,6 +1,5 @@
 import logging
 
-from fastapi import HTTPException, status
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolCallLimitMiddleware
 from langchain_core.messages import AIMessage, ToolMessage
@@ -8,20 +7,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.llm import build_chat_model
+from app.db.session import SessionLocal
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.schemas.chat import ChatRequest, ChatResponse, ConversationResponse, MessageResponse, ToolEvent
-from app.services.agent_service import get_agent
+from app.services.agent_service import get_agent, get_agent_config
+from app.services.errors import BadGatewayError, NotFoundError, ServiceUnavailableError
 from app.services.tool_service import build_agent_tools
 
 logger = logging.getLogger(__name__)
 
 SHORT_TERM_LIMIT = 20
 RECURSION_LIMIT = 15
-TOOL_HINT = (
-    "\n\nYou have tools. Call get_current_time for the date or time, "
-    "calculator for arithmetic, and HTTP tools when they match the request."
-)
 
 
 def _llm_error_detail(exc: Exception) -> str:
@@ -51,17 +48,35 @@ def _message_text(content: object) -> str:
     return str(content) if content is not None else ""
 
 
-def _tool_events(result: dict) -> list[ToolEvent]:
-    events: list[ToolEvent] = []
+def _tool_events_from_messages(messages: list[Message]) -> list[ToolEvent]:
+    return [
+        ToolEvent(name=item.tool_name or "tool", content=item.content)
+        for item in messages
+        if item.role == "tool"
+    ]
+
+
+def _usage_from_result(result: dict) -> tuple[int | None, int | None]:
+    prompt_tokens = 0
+    completion_tokens = 0
+    found = False
     for item in result.get("messages", []):
-        if isinstance(item, ToolMessage):
-            events.append(
-                ToolEvent(
-                    name=item.name or "tool",
-                    content=_message_text(item.content)[:2000],
-                )
-            )
-    return events
+        if not isinstance(item, AIMessage):
+            continue
+        meta = getattr(item, "usage_metadata", None) or {}
+        if not meta:
+            response_meta = getattr(item, "response_metadata", None) or {}
+            meta = response_meta.get("token_usage") or response_meta.get("usage") or {}
+        input_tokens = meta.get("input_tokens", meta.get("prompt_tokens"))
+        output_tokens = meta.get("output_tokens", meta.get("completion_tokens"))
+        if input_tokens is None and output_tokens is None:
+            continue
+        found = True
+        prompt_tokens += int(input_tokens or 0)
+        completion_tokens += int(output_tokens or 0)
+    if not found:
+        return None, None
+    return prompt_tokens, completion_tokens
 
 
 def _history_payload(messages: list[Message]) -> list[dict[str, str]]:
@@ -89,10 +104,7 @@ def _get_conversation(
         )
     )
     if conversation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found",
-        )
+        raise NotFoundError("Conversation not found")
     return conversation
 
 
@@ -104,25 +116,24 @@ def list_conversations(
     agent_id: int,
 ) -> list[ConversationResponse]:
     get_agent(db, tenant_id=tenant_id, agent_id=agent_id)
-    conversations = list(
-        db.scalars(
-            select(Conversation)
-            .where(
-                Conversation.tenant_id == tenant_id,
-                Conversation.agent_id == agent_id,
-                Conversation.user_id == user_id,
-            )
-            .order_by(Conversation.id.desc())
-        ).all()
+    first_message = (
+        select(Message.content)
+        .where(Message.conversation_id == Conversation.id)
+        .order_by(Message.id)
+        .limit(1)
+        .scalar_subquery()
     )
-    items: list[ConversationResponse] = []
-    for conversation in conversations:
-        first = db.scalar(
-            select(Message.content)
-            .where(Message.conversation_id == conversation.id)
-            .order_by(Message.id)
-            .limit(1)
+    rows = db.execute(
+        select(Conversation, first_message)
+        .where(
+            Conversation.tenant_id == tenant_id,
+            Conversation.agent_id == agent_id,
+            Conversation.user_id == user_id,
         )
+        .order_by(Conversation.id.desc())
+    ).all()
+    items: list[ConversationResponse] = []
+    for conversation, first in rows:
         preview = (first or "Empty").strip().replace("\n", " ")
         items.append(
             ConversationResponse(
@@ -167,12 +178,13 @@ def chat(
     agent_id: int,
     payload: ChatRequest,
 ) -> ChatResponse:
-    agent = get_agent(db, tenant_id=tenant_id, agent_id=agent_id)
+    config = get_agent_config(db, tenant_id=tenant_id, agent_id=agent_id)
+    tools = build_agent_tools(db, tenant_id=tenant_id, agent_id=config["id"])
 
     if payload.conversation_id is None:
         conversation = Conversation(
             tenant_id=tenant_id,
-            agent_id=agent.id,
+            agent_id=config["id"],
             user_id=user_id,
         )
         db.add(conversation)
@@ -182,7 +194,7 @@ def chat(
             db,
             tenant_id=tenant_id,
             user_id=user_id,
-            agent_id=agent.id,
+            agent_id=config["id"],
             conversation_id=payload.conversation_id,
         )
 
@@ -193,6 +205,7 @@ def chat(
             .order_by(Message.id)
         ).all()
     )
+    history = _history_payload(previous)
 
     user_message = Message(
         conversation_id=conversation.id,
@@ -200,34 +213,27 @@ def chat(
         content=payload.message,
     )
     db.add(user_message)
-    db.flush()
+    db.commit()
+    conversation_id = conversation.id
+    db.close()
 
     try:
-        model = build_chat_model(model=agent.model, temperature=agent.temperature)
+        model = build_chat_model(model=config["model"], temperature=config["temperature"])
         graph = create_agent(
             model,
-            tools=build_agent_tools(db, tenant_id=tenant_id, agent_id=agent.id),
-            system_prompt=agent.system_prompt + TOOL_HINT,
+            tools=tools,
+            system_prompt=config["system_prompt"],
             middleware=[ToolCallLimitMiddleware(run_limit=8, exit_behavior="end")],
         )
         result = graph.invoke(
-            {
-                "messages": _history_payload(previous)
-                + [{"role": "user", "content": payload.message}]
-            },
+            {"messages": history + [{"role": "user", "content": payload.message}]},
             {"recursion_limit": RECURSION_LIMIT},
         )
     except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
+        raise ServiceUnavailableError(str(exc)) from exc
     except Exception as exc:
         logger.exception("LLM request failed")
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=_llm_error_detail(exc),
-        ) from exc
+        raise BadGatewayError(_llm_error_detail(exc)) from exc
 
     reply = ""
     for item in reversed(result.get("messages", [])):
@@ -238,26 +244,41 @@ def chat(
     if not reply:
         reply = "No response from the model."
 
-    assistant_message = Message(
-        conversation_id=conversation.id,
-        role="assistant",
-        content=reply,
-    )
-    db.add(assistant_message)
-    db.commit()
-    db.refresh(user_message)
-    db.refresh(assistant_message)
+    prompt_tokens, completion_tokens = _usage_from_result(result)
 
-    stored = list_messages(
-        db,
-        tenant_id=tenant_id,
-        user_id=user_id,
-        agent_id=agent.id,
-        conversation_id=conversation.id,
-    )
-    return ChatResponse(
-        conversation_id=conversation.id,
-        reply=reply,
-        messages=[MessageResponse.model_validate(item) for item in stored],
-        tool_events=_tool_events(result),
-    )
+    with SessionLocal() as save_db:
+        for item in result.get("messages", []):
+            if isinstance(item, ToolMessage):
+                save_db.add(
+                    Message(
+                        conversation_id=conversation_id,
+                        role="tool",
+                        content=_message_text(item.content)[:8000],
+                        tool_name=item.name or "tool",
+                    )
+                )
+        save_db.add(
+            Message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=reply,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
+        )
+        save_db.commit()
+        stored = list(
+            save_db.scalars(
+                select(Message)
+                .where(Message.conversation_id == conversation_id)
+                .order_by(Message.id)
+            ).all()
+        )
+        return ChatResponse(
+            conversation_id=conversation_id,
+            reply=reply,
+            messages=[MessageResponse.model_validate(item) for item in stored],
+            tool_events=_tool_events_from_messages(stored),
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
