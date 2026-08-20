@@ -10,8 +10,10 @@ Staj projesi: JWT auth, tenant izolasyonu, agent CRUD, LangGraph agent + tool'la
 ## Fazlar
 
 1. Iskelet: auth, tenant, agent CRUD
-2. Agent: LangGraph chat, tool'lar
+2. Agent: LangGraph chat (bu dal), tool'lar sonra
 3. DevOps: Docker Compose
+
+`.env` icinde `OPENROUTER_API_KEY` dolu olmali. Chat, agent kaydindaki system_prompt / model / temperature kullanir. Tool'lar henuz yok.
 
 ## Lokal kurulum (Faz 1)
 
@@ -51,6 +53,8 @@ Agent endpoint'leri (JWT gerekir):
 - `GET /api/v1/agents/{id}`
 - `PATCH /api/v1/agents/{id}`
 - `DELETE /api/v1/agents/{id}`
+- `POST /api/v1/agents/{id}/chat` — message, istege bagli conversation_id; JWT gerekir
+- `GET /api/v1/agents/{id}/conversations/{conversation_id}/messages`
 - Swagger: http://127.0.0.1:8000/docs
 
 5. Arayuz (ayri terminal):

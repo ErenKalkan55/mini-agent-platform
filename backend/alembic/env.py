@@ -13,7 +13,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from app.core.config import settings
 from app.db.base import Base
-from app.models import Agent, Tenant, User  # noqa: F401
+from app.models import Agent, Conversation, Message, Tenant, User  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

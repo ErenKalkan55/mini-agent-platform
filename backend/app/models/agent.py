@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.conversation import Conversation
     from app.models.tenant import Tenant
 
 
@@ -32,3 +33,7 @@ class Agent(Base):
     )
 
     tenant: Mapped[Tenant] = relationship(back_populates="agents")
+    conversations: Mapped[list[Conversation]] = relationship(
+        back_populates="agent",
+        cascade="all, delete-orphan",
+    )
