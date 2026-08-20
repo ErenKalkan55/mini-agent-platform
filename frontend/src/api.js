@@ -12,6 +12,18 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+const AUTH_EXPIRED = "mini-agent-auth-expired";
+
+export function subscribeAuthExpired(handler) {
+  window.addEventListener(AUTH_EXPIRED, handler);
+  return () => window.removeEventListener(AUTH_EXPIRED, handler);
+}
+
+function emitAuthExpired() {
+  clearToken();
+  window.dispatchEvent(new Event(AUTH_EXPIRED));
+}
+
 async function request(path, { method = "GET", body, auth = false } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (auth) {
@@ -32,8 +44,7 @@ async function request(path, { method = "GET", body, auth = false } = {}) {
   }
 
   if (response.status === 401 && auth) {
-    clearToken();
-    window.location.reload();
+    emitAuthExpired();
     throw new Error("Session expired");
   }
 
