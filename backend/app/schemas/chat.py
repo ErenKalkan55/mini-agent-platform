@@ -22,6 +22,14 @@ class ToolEvent(BaseModel):
     content: str
 
 
+class ConversationResponse(BaseModel):
+    id: int
+    created_at: datetime
+    preview: str
+
+    model_config = {"from_attributes": True}
+
+
 class ChatResponse(BaseModel):
     conversation_id: int
     reply: str

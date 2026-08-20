@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { sendChat } from "../api";
+import { listConversations, listMessages, sendChat } from "../api";
 
 export default function ChatPanel({ agent }) {
   const [conversationId, setConversationId] = useState(null);
+  const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -10,12 +11,22 @@ export default function ChatPanel({ agent }) {
   const [toolEvents, setToolEvents] = useState([]);
   const bottomRef = useRef(null);
 
+  async function refreshConversations(agentId) {
+    const data = await listConversations(agentId);
+    setConversations(data);
+  }
+
   useEffect(() => {
     setConversationId(null);
+    setConversations([]);
     setMessages([]);
     setDraft("");
     setError("");
     setToolEvents([]);
+    if (!agent) {
+      return;
+    }
+    refreshConversations(agent.id).catch((err) => setError(err.message));
   }, [agent?.id]);
 
   useEffect(() => {
@@ -29,6 +40,21 @@ export default function ChatPanel({ agent }) {
         <p className="muted">Select an agent from the list to start chatting.</p>
       </section>
     );
+  }
+
+  async function openConversation(id) {
+    setError("");
+    setToolEvents([]);
+    setBusy(true);
+    try {
+      const data = await listMessages(agent.id, id);
+      setConversationId(id);
+      setMessages(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleSend(event) {
@@ -49,6 +75,7 @@ export default function ChatPanel({ agent }) {
       setConversationId(result.conversation_id);
       setMessages(result.messages);
       setToolEvents(result.tool_events || []);
+      await refreshConversations(agent.id);
     } catch (err) {
       setError(err.message);
       setDraft(text);
@@ -71,13 +98,35 @@ export default function ChatPanel({ agent }) {
           <h2>Chat</h2>
           <p className="muted">
             {agent.name}
-            {conversationId ? ` / conversation ${conversationId}` : ""}
+            {conversationId ? ` / conversation ${conversationId}` : " / new conversation"}
           </p>
         </div>
         <button type="button" className="ghost" onClick={handleNewConversation}>
           New conversation
         </button>
       </div>
+
+      {conversations.length > 0 ? (
+        <ul className="conversation-list">
+          {conversations.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                className={
+                  item.id === conversationId ? "conversation-btn conversation-btn-active" : "conversation-btn"
+                }
+                onClick={() => openConversation(item.id)}
+                disabled={busy}
+              >
+                <span>#{item.id}</span>
+                <span className="muted">{item.preview}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">No saved conversations yet.</p>
+      )}
 
       <div className="chat-log">
         {messages.length === 0 && !busy ? (

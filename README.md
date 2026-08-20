@@ -56,6 +56,7 @@ Agent endpoint'leri (JWT gerekir):
 - `PATCH /api/v1/agents/{id}`
 - `DELETE /api/v1/agents/{id}`
 - `POST /api/v1/agents/{id}/chat` — message, istege bagli conversation_id; JWT gerekir
+- `GET /api/v1/agents/{id}/conversations` — kullanicinin bu agent ile konusmalari
 - `GET /api/v1/agents/{id}/conversations/{conversation_id}/messages`
 - `GET /api/v1/system-tools`
 - `GET /api/v1/agents/{id}/tools`
@@ -72,6 +73,7 @@ npm run dev
 ```
 
 Tarayici: http://127.0.0.1:5173
-Login ve kayit ayni kartta. Agent olusturma / liste / silme giris sonrasi acilir.
+Login ve kayit ayni kartta. Agent olusturma / duzenleme / liste / silme giris sonrasi acilir.
 Agent satirindaki Chat ile sohbet baslar; mesajlar veritabanina kaydolur.
+Onceki konusmalar listeden acilir; New conversation yeni sohbet baslatir.
 Tool paneli: sistem tool'lari her zaman aciktir. HTTP tool eklemek icin name, description, GET/POST ve URL yeter. URL icinde `{city}` gibi yer tutucu, argument_schema ile eslesir.

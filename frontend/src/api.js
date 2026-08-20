@@ -65,6 +65,14 @@ export function createAgent(payload) {
   return request("/api/v1/agents", { method: "POST", body: payload, auth: true });
 }
 
+export function updateAgent(agentId, payload) {
+  return request(`/api/v1/agents/${agentId}`, {
+    method: "PATCH",
+    body: payload,
+    auth: true,
+  });
+}
+
 export function deleteAgent(agentId) {
   return request(`/api/v1/agents/${agentId}`, { method: "DELETE", auth: true });
 }
@@ -75,6 +83,17 @@ export function sendChat(agentId, payload) {
     body: payload,
     auth: true,
   });
+}
+
+export function listConversations(agentId) {
+  return request(`/api/v1/agents/${agentId}/conversations`, { auth: true });
+}
+
+export function listMessages(agentId, conversationId) {
+  return request(
+    `/api/v1/agents/${agentId}/conversations/${conversationId}/messages`,
+    { auth: true },
+  );
 }
 
 export function listSystemTools() {
