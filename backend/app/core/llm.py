@@ -11,4 +11,9 @@ def build_chat_model(*, model: str, temperature: float) -> ChatOpenAI:
         temperature=temperature,
         api_key=settings.OPENROUTER_API_KEY,
         base_url=settings.OPENROUTER_BASE_URL,
+        max_tokens=2048,
+        default_headers={
+            "HTTP-Referer": "http://localhost:5173",
+            "X-Title": "Mini Agent Platform",
+        },
     )

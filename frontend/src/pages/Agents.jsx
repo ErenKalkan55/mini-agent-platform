@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createAgent, deleteAgent, listAgents } from "../api";
+import ChatPanel from "./ChatPanel";
 
 const emptyForm = {
   name: "",
@@ -13,6 +14,7 @@ export default function AgentsPage({ user, onLogout }) {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState(null);
 
   async function refresh() {
     const data = await listAgents();
@@ -45,6 +47,9 @@ export default function AgentsPage({ user, onLogout }) {
     setError("");
     try {
       await deleteAgent(agentId);
+      if (selectedAgent?.id === agentId) {
+        setSelectedAgent(null);
+      }
       await refresh();
     } catch (err) {
       setError(err.message);
@@ -123,7 +128,12 @@ export default function AgentsPage({ user, onLogout }) {
           ) : (
             <ul className="agent-list">
               {agents.map((agent) => (
-                <li key={agent.id} className="agent-item">
+                <li
+                  key={agent.id}
+                  className={
+                    selectedAgent?.id === agent.id ? "agent-item agent-item-active" : "agent-item"
+                  }
+                >
                   <div>
                     <strong>{agent.name}</strong>
                     <p className="muted">
@@ -131,14 +141,21 @@ export default function AgentsPage({ user, onLogout }) {
                     </p>
                     <p className="prompt">{agent.system_prompt}</p>
                   </div>
-                  <button type="button" className="ghost" onClick={() => handleDelete(agent.id)}>
-                    Delete
-                  </button>
+                  <div className="agent-actions">
+                    <button type="button" className="ghost" onClick={() => setSelectedAgent(agent)}>
+                      Chat
+                    </button>
+                    <button type="button" className="ghost" onClick={() => handleDelete(agent.id)}>
+                      Delete
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
         </section>
+
+        <ChatPanel agent={selectedAgent} />
       </main>
     </div>
   );

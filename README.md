@@ -67,3 +67,4 @@ npm run dev
 
 Tarayici: http://127.0.0.1:5173
 Login ve kayit ayni kartta. Agent olusturma / liste / silme giris sonrasi acilir.
+Agent satirindaki Chat ile sohbet baslar; mesajlar veritabanina kaydolur.

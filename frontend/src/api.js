@@ -68,3 +68,11 @@ export function createAgent(payload) {
 export function deleteAgent(agentId) {
   return request(`/api/v1/agents/${agentId}`, { method: "DELETE", auth: true });
 }
+
+export function sendChat(agentId, payload) {
+  return request(`/api/v1/agents/${agentId}/chat`, {
+    method: "POST",
+    body: payload,
+    auth: true,
+  });
+}

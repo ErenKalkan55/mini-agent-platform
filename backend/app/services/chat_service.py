@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import HTTPException, status
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolCallLimitMiddleware
@@ -11,8 +13,23 @@ from app.models.message import Message
 from app.schemas.chat import ChatRequest, ChatResponse, MessageResponse
 from app.services.agent_service import get_agent
 
+logger = logging.getLogger(__name__)
+
 SHORT_TERM_LIMIT = 20
 RECURSION_LIMIT = 15
+
+
+def _llm_error_detail(exc: Exception) -> str:
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        err = body.get("error")
+        if isinstance(err, dict) and isinstance(err.get("code"), (int, str)):
+            if str(err.get("code")) == "402":
+                return "OpenRouter credit limit. Reply size was reduced; try again."
+    text = str(exc).lower()
+    if "402" in text or "credits" in text:
+        return "OpenRouter credit limit. Reply size was reduced; try again."
+    return "LLM request failed"
 
 
 def _message_text(content: object) -> str:
@@ -145,9 +162,10 @@ def chat(
             detail=str(exc),
         ) from exc
     except Exception as exc:
+        logger.exception("LLM request failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="LLM request failed",
+            detail=_llm_error_detail(exc),
         ) from exc
 
     reply = ""
