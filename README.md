@@ -13,8 +13,8 @@ Staj projesi: JWT auth, tenant izolasyonu, agent CRUD, LangGraph agent + tool'la
 2. Agent: LangGraph chat + tool'lar (bu dal)
 3. DevOps: Docker Compose
 
-`.env` icinde `OPENROUTER_API_KEY` dolu olmali. Chat, agent kaydindaki system_prompt / model / temperature kullanir.
-Her agent `get_current_time` ve `calculator` sistem tool'larina sahiptir. Kullanici HTTP tool ekleyebilir.
+`.env` icinde `OPENROUTER_API_KEY` dolu olmali. Chat, agent kaydindaki system_prompt / model / temperature / system_tools kullanir.
+Agent olusturulurken sistem tool'lari secilir (`get_current_time`, `calculator`); HTTP tool sonradan eklenir.
 Redis opsiyoneldir: agent promptu ve HTTP tool listesi cache'lenir. Kaynak yine Postgres'tir; agent/tool degisince cache silinir. `REDIS_URL` bos veya Redis kapaliysa uygulama DB ile devam eder.
 
 Kisa sureli hafiza son 20 user/assistant mesajini LLM'e tasir. Daha eski turlar sessizce dusurulur; tool izleri ve token sayilari veritabaninda kalir. HTTP tool URL'leri localhost / ozel ag adreslerine acilmaz.
@@ -52,7 +52,7 @@ Auth endpoint'leri:
 
 Agent endpoint'leri (JWT gerekir):
 
-- `POST /api/v1/agents` — name, system_prompt, model, temperature
+- `POST /api/v1/agents` — name, system_prompt, model, temperature, system_tools
 - `GET /api/v1/agents` — tenant'a ait liste
 - `GET /api/v1/agents/{id}`
 - `PATCH /api/v1/agents/{id}`
@@ -78,4 +78,4 @@ Tarayici: http://127.0.0.1:5173
 Login ve kayit ayni kartta. Agent olusturma / duzenleme / liste / silme giris sonrasi acilir.
 Agent satirindaki Chat ile sohbet baslar; mesajlar veritabanina kaydolur.
 Onceki konusmalar listeden acilir; New conversation yeni sohbet baslatir.
-Tool paneli: sistem tool'lari her zaman aciktir. HTTP tool eklemek icin name, description, GET/POST ve URL yeter. URL icinde `{city}` gibi yer tutucu, argument_schema ile eslesir.
+Tool paneli: secilen sistem tool'lari acilip kapatilir. HTTP tool eklemek icin name, description, GET/POST ve URL yeter. URL icinde `{city}` gibi yer tutucu, argument_schema ile eslesir.
