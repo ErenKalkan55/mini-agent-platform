@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { sendChat } from "../api";
 
 export default function ChatPanel({ agent }) {
@@ -7,6 +7,7 @@ export default function ChatPanel({ agent }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [toolEvents, setToolEvents] = useState([]);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -14,6 +15,7 @@ export default function ChatPanel({ agent }) {
     setMessages([]);
     setDraft("");
     setError("");
+    setToolEvents([]);
   }, [agent?.id]);
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export default function ChatPanel({ agent }) {
       const result = await sendChat(agent.id, payload);
       setConversationId(result.conversation_id);
       setMessages(result.messages);
+      setToolEvents(result.tool_events || []);
     } catch (err) {
       setError(err.message);
       setDraft(text);
@@ -58,6 +61,7 @@ export default function ChatPanel({ agent }) {
     setConversationId(null);
     setMessages([]);
     setError("");
+    setToolEvents([]);
   }
 
   return (
@@ -79,11 +83,21 @@ export default function ChatPanel({ agent }) {
         {messages.length === 0 && !busy ? (
           <p className="muted">Send a message to start this conversation.</p>
         ) : null}
-        {messages.map((item) => (
-          <div key={item.id} className={`bubble bubble-${item.role}`}>
-            <span className="bubble-role">{item.role}</span>
-            <p>{item.content}</p>
-          </div>
+        {messages.map((item, index) => (
+          <Fragment key={item.id}>
+            {item.role === "assistant" && index === messages.length - 1
+              ? toolEvents.map((event, eventIndex) => (
+                  <div key={`${event.name}-${eventIndex}`} className="bubble bubble-tool">
+                    <span className="bubble-role">tool {event.name}</span>
+                    <p>{event.content}</p>
+                  </div>
+                ))
+              : null}
+            <div className={`bubble bubble-${item.role}`}>
+              <span className="bubble-role">{item.role}</span>
+              <p>{item.content}</p>
+            </div>
+          </Fragment>
         ))}
         {busy ? <p className="muted">Waiting for the model...</p> : null}
         <div ref={bottomRef} />

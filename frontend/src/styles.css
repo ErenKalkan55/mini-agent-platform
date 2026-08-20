@@ -107,7 +107,8 @@ h1 {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid var(--line);
   background: var(--field);
@@ -250,8 +251,8 @@ textarea {
   border-color: var(--accent);
 }
 
-.chat-panel {
-  grid-column: 1 / -1;
+.chat-panel,
+.tools-panel {
   display: flex;
   flex-direction: column;
   min-height: 420px;
@@ -307,11 +308,43 @@ textarea {
   align-self: flex-start;
 }
 
+.bubble-tool {
+  align-self: flex-start;
+  max-width: 100%;
+  background: #f4efe4;
+}
+
 .chat-form {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 12px;
+}
+
+.tool-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tool-item {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.tool-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+h3 {
+  margin: 8px 0 0;
+  font-size: 16px;
 }
 
 @media (max-width: 900px) {

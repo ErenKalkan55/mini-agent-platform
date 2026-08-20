@@ -76,3 +76,26 @@ export function sendChat(agentId, payload) {
     auth: true,
   });
 }
+
+export function listSystemTools() {
+  return request("/api/v1/system-tools", { auth: true });
+}
+
+export function listTools(agentId) {
+  return request(`/api/v1/agents/${agentId}/tools`, { auth: true });
+}
+
+export function createTool(agentId, payload) {
+  return request(`/api/v1/agents/${agentId}/tools`, {
+    method: "POST",
+    body: payload,
+    auth: true,
+  });
+}
+
+export function deleteTool(agentId, toolId) {
+  return request(`/api/v1/agents/${agentId}/tools/${toolId}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}

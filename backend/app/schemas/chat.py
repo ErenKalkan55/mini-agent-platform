@@ -17,7 +17,13 @@ class MessageResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ToolEvent(BaseModel):
+    name: str
+    content: str
+
+
 class ChatResponse(BaseModel):
     conversation_id: int
     reply: str
     messages: list[MessageResponse]
+    tool_events: list[ToolEvent] = []

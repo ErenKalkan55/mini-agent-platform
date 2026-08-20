@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createAgent, deleteAgent, listAgents } from "../api";
 import ChatPanel from "./ChatPanel";
+import ToolsPanel from "./ToolsPanel";
 
 const emptyForm = {
   name: "",
@@ -155,6 +156,7 @@ export default function AgentsPage({ user, onLogout }) {
           )}
         </section>
 
+        <ToolsPanel agent={selectedAgent} />
         <ChatPanel agent={selectedAgent} />
       </main>
     </div>

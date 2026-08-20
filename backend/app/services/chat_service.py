@@ -3,20 +3,25 @@ import logging
 from fastapi import HTTPException, status
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolCallLimitMiddleware
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.llm import build_chat_model
 from app.models.conversation import Conversation
 from app.models.message import Message
-from app.schemas.chat import ChatRequest, ChatResponse, MessageResponse
+from app.schemas.chat import ChatRequest, ChatResponse, MessageResponse, ToolEvent
 from app.services.agent_service import get_agent
+from app.services.tool_service import build_agent_tools
 
 logger = logging.getLogger(__name__)
 
 SHORT_TERM_LIMIT = 20
 RECURSION_LIMIT = 15
+TOOL_HINT = (
+    "\n\nYou have tools. Call get_current_time for the date or time, "
+    "calculator for arithmetic, and HTTP tools when they match the request."
+)
 
 
 def _llm_error_detail(exc: Exception) -> str:
@@ -44,6 +49,19 @@ def _message_text(content: object) -> str:
                 parts.append(str(block.get("text", "")))
         return "".join(parts)
     return str(content) if content is not None else ""
+
+
+def _tool_events(result: dict) -> list[ToolEvent]:
+    events: list[ToolEvent] = []
+    for item in result.get("messages", []):
+        if isinstance(item, ToolMessage):
+            events.append(
+                ToolEvent(
+                    name=item.name or "tool",
+                    content=_message_text(item.content)[:2000],
+                )
+            )
+    return events
 
 
 def _history_payload(messages: list[Message]) -> list[dict[str, str]]:
@@ -145,8 +163,8 @@ def chat(
         model = build_chat_model(model=agent.model, temperature=agent.temperature)
         graph = create_agent(
             model,
-            tools=[],
-            system_prompt=agent.system_prompt,
+            tools=build_agent_tools(db, tenant_id=tenant_id, agent_id=agent.id),
+            system_prompt=agent.system_prompt + TOOL_HINT,
             middleware=[ToolCallLimitMiddleware(run_limit=8, exit_behavior="end")],
         )
         result = graph.invoke(
@@ -197,4 +215,5 @@ def chat(
         conversation_id=conversation.id,
         reply=reply,
         messages=[MessageResponse.model_validate(item) for item in stored],
+        tool_events=_tool_events(result),
     )
