@@ -77,6 +77,17 @@ export function sendChat(agentId, payload) {
   });
 }
 
+export function listConversations(agentId) {
+  return request(`/api/v1/agents/${agentId}/conversations`, { auth: true });
+}
+
+export function listMessages(agentId, conversationId) {
+  return request(
+    `/api/v1/agents/${agentId}/conversations/${conversationId}/messages`,
+    { auth: true },
+  );
+}
+
 export function listSystemTools() {
   return request("/api/v1/system-tools", { auth: true });
 }

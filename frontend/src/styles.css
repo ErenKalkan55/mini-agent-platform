@@ -265,6 +265,36 @@ textarea {
   gap: 12px;
 }
 
+.conversation-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.conversation-btn {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--field);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  text-align: left;
+}
+
+.conversation-btn-active {
+  border-color: var(--accent);
+  background: #ece7f8;
+}
+
 .chat-log {
   flex: 1;
   min-height: 240px;

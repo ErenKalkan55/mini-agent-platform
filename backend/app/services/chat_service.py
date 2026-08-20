@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.llm import build_chat_model
 from app.models.conversation import Conversation
 from app.models.message import Message
-from app.schemas.chat import ChatRequest, ChatResponse, MessageResponse, ToolEvent
+from app.schemas.chat import ChatRequest, ChatResponse, ConversationResponse, MessageResponse, ToolEvent
 from app.services.agent_service import get_agent
 from app.services.tool_service import build_agent_tools
 
@@ -76,6 +76,7 @@ def _get_conversation(
     db: Session,
     *,
     tenant_id: int,
+    user_id: int,
     agent_id: int,
     conversation_id: int,
 ) -> Conversation:
@@ -84,6 +85,7 @@ def _get_conversation(
             Conversation.id == conversation_id,
             Conversation.tenant_id == tenant_id,
             Conversation.agent_id == agent_id,
+            Conversation.user_id == user_id,
         )
     )
     if conversation is None:
@@ -94,10 +96,49 @@ def _get_conversation(
     return conversation
 
 
+def list_conversations(
+    db: Session,
+    *,
+    tenant_id: int,
+    user_id: int,
+    agent_id: int,
+) -> list[ConversationResponse]:
+    get_agent(db, tenant_id=tenant_id, agent_id=agent_id)
+    conversations = list(
+        db.scalars(
+            select(Conversation)
+            .where(
+                Conversation.tenant_id == tenant_id,
+                Conversation.agent_id == agent_id,
+                Conversation.user_id == user_id,
+            )
+            .order_by(Conversation.id.desc())
+        ).all()
+    )
+    items: list[ConversationResponse] = []
+    for conversation in conversations:
+        first = db.scalar(
+            select(Message.content)
+            .where(Message.conversation_id == conversation.id)
+            .order_by(Message.id)
+            .limit(1)
+        )
+        preview = (first or "Empty").strip().replace("\n", " ")
+        items.append(
+            ConversationResponse(
+                id=conversation.id,
+                created_at=conversation.created_at,
+                preview=preview[:80],
+            )
+        )
+    return items
+
+
 def list_messages(
     db: Session,
     *,
     tenant_id: int,
+    user_id: int,
     agent_id: int,
     conversation_id: int,
 ) -> list[Message]:
@@ -105,6 +146,7 @@ def list_messages(
     conversation = _get_conversation(
         db,
         tenant_id=tenant_id,
+        user_id=user_id,
         agent_id=agent_id,
         conversation_id=conversation_id,
     )
@@ -139,6 +181,7 @@ def chat(
         conversation = _get_conversation(
             db,
             tenant_id=tenant_id,
+            user_id=user_id,
             agent_id=agent.id,
             conversation_id=payload.conversation_id,
         )
@@ -208,6 +251,7 @@ def chat(
     stored = list_messages(
         db,
         tenant_id=tenant_id,
+        user_id=user_id,
         agent_id=agent.id,
         conversation_id=conversation.id,
     )
