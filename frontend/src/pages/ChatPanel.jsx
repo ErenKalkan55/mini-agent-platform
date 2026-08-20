@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listConversations, listMessages, sendChat } from "../api";
 
 export default function ChatPanel({ agent }) {
@@ -8,7 +8,6 @@ export default function ChatPanel({ agent }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [toolEvents, setToolEvents] = useState([]);
   const bottomRef = useRef(null);
 
   async function refreshConversations(agentId) {
@@ -22,7 +21,6 @@ export default function ChatPanel({ agent }) {
     setMessages([]);
     setDraft("");
     setError("");
-    setToolEvents([]);
     if (!agent) {
       return;
     }
@@ -35,16 +33,17 @@ export default function ChatPanel({ agent }) {
 
   if (!agent) {
     return (
-      <section className="panel chat-panel">
-        <h2>Chat</h2>
-        <p className="muted">Select an agent from the list to start chatting.</p>
+      <section className="panel">
+        <div className="empty-state">
+          <p className="empty-title">Select an agent</p>
+          <p className="muted">Open an agent from the Agents page, then start a conversation.</p>
+        </div>
       </section>
     );
   }
 
   async function openConversation(id) {
     setError("");
-    setToolEvents([]);
     setBusy(true);
     try {
       const data = await listMessages(agent.id, id);
@@ -63,9 +62,11 @@ export default function ChatPanel({ agent }) {
     if (!text || busy) {
       return;
     }
+    const optimistic = { id: `tmp-${Date.now()}`, role: "user", content: text };
     setBusy(true);
     setError("");
     setDraft("");
+    setMessages((prev) => [...prev, optimistic]);
     try {
       const payload = { message: text };
       if (conversationId) {
@@ -74,11 +75,11 @@ export default function ChatPanel({ agent }) {
       const result = await sendChat(agent.id, payload);
       setConversationId(result.conversation_id);
       setMessages(result.messages);
-      setToolEvents(result.tool_events || []);
       await refreshConversations(agent.id);
     } catch (err) {
       setError(err.message);
       setDraft(text);
+      setMessages((prev) => prev.filter((item) => item.id !== optimistic.id));
     } finally {
       setBusy(false);
     }
@@ -88,89 +89,105 @@ export default function ChatPanel({ agent }) {
     setConversationId(null);
     setMessages([]);
     setError("");
-    setToolEvents([]);
   }
 
   return (
-    <section className="panel chat-panel">
-      <div className="chat-header">
-        <div>
-          <h2>Chat</h2>
-          <p className="muted">
-            {agent.name}
-            {conversationId ? ` / conversation ${conversationId}` : " / new conversation"}
-          </p>
+    <section className="panel chat-shell">
+      <aside className="chat-threads">
+        <div className="chat-threads-head">
+          <p className="stat-label">Conversations</p>
+          <button type="button" className="ghost" onClick={handleNewConversation}>
+            New
+          </button>
         </div>
-        <button type="button" className="ghost" onClick={handleNewConversation}>
-          New conversation
-        </button>
-      </div>
+        {conversations.length > 0 ? (
+          <ul className="conversation-list">
+            {conversations.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className={
+                    item.id === conversationId
+                      ? "conversation-btn conversation-btn-active"
+                      : "conversation-btn"
+                  }
+                  onClick={() => openConversation(item.id)}
+                  disabled={busy}
+                >
+                  <span className="conversation-title">{item.preview}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted chat-threads-empty">No conversations yet.</p>
+        )}
+      </aside>
 
-      {conversations.length > 0 ? (
-        <ul className="conversation-list">
-          {conversations.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                className={
-                  item.id === conversationId ? "conversation-btn conversation-btn-active" : "conversation-btn"
-                }
-                onClick={() => openConversation(item.id)}
-                disabled={busy}
-              >
-                <span>#{item.id}</span>
-                <span className="muted">{item.preview}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="muted">No saved conversations yet.</p>
-      )}
+      <div className="chat-stage">
+        <div className="chat-stage-head">
+          <p className="chat-agent-name">{agent.name}</p>
+          <p className="muted">{conversationId ? "Saved conversation" : "New conversation"}</p>
+        </div>
 
-      <div className="chat-log">
-        {messages.length === 0 && !busy ? (
-          <p className="muted">Send a message to start this conversation.</p>
-        ) : null}
-        {messages.map((item, index) => (
-          <Fragment key={item.id}>
-            {item.role === "assistant" && index === messages.length - 1
-              ? toolEvents.map((event, eventIndex) => (
-                  <div key={`${event.name}-${eventIndex}`} className="bubble bubble-tool">
-                    <span className="bubble-role">tool {event.name}</span>
-                    <p>{event.content}</p>
-                  </div>
-                ))
-              : null}
-            <div className={`bubble bubble-${item.role}`}>
-              <span className="bubble-role">{item.role}</span>
-              <p>{item.content}</p>
+        <div className="chat-log">
+          {messages.length === 0 && !busy ? (
+            <div className="empty-state chat-empty">
+              <p className="empty-title">Send a message</p>
+              <p className="muted">This agent uses its system prompt and tools to answer.</p>
             </div>
-          </Fragment>
-        ))}
-        {busy ? <p className="muted">Waiting for the model...</p> : null}
-        <div ref={bottomRef} />
-      </div>
+          ) : null}
+          {messages.map((item) =>
+            item.role === "tool" ? (
+              <details key={item.id} className="tool-trace">
+                <summary>{item.tool_name || "tool"}</summary>
+                <p>{item.content}</p>
+              </details>
+            ) : (
+              <div key={item.id} className={`bubble bubble-${item.role}`}>
+                <p>{item.content}</p>
+                {item.role === "assistant" && item.prompt_tokens != null ? (
+                  <p className="muted token-meta">
+                    {item.prompt_tokens} / {item.completion_tokens ?? 0} tokens
+                  </p>
+                ) : null}
+              </div>
+            ),
+          )}
+          {busy ? (
+            <div className="bubble bubble-assistant">
+              <span className="typing" aria-label="Waiting for the model">
+                <span />
+                <span />
+                <span />
+              </span>
+            </div>
+          ) : null}
+          <div ref={bottomRef} />
+        </div>
 
-      <form className="chat-form" onSubmit={handleSend}>
-        {error ? <p className="error">{error}</p> : null}
-        <textarea
-          rows={3}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              event.currentTarget.form?.requestSubmit();
-            }
-          }}
-          placeholder="Type a message"
-          disabled={busy}
-        />
-        <button className="primary" type="submit" disabled={busy || !draft.trim()}>
-          {busy ? "Sending" : "Send"}
-        </button>
-      </form>
+        <form className="chat-form" onSubmit={handleSend}>
+          {error ? <p className="error">{error}</p> : null}
+          <div className="composer">
+            <textarea
+              rows={1}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
+              placeholder="Message"
+              disabled={busy}
+            />
+            <button className="primary" type="submit" disabled={busy || !draft.trim()}>
+              {busy ? "Sending" : "Send"}
+            </button>
+          </div>
+        </form>
+      </div>
     </section>
   );
 }

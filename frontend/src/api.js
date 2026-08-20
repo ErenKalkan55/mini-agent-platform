@@ -31,6 +31,12 @@ async function request(path, { method = "GET", body, auth = false } = {}) {
     return null;
   }
 
+  if (response.status === 401 && auth) {
+    clearToken();
+    window.location.reload();
+    throw new Error("Session expired");
+  }
+
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const detail = data.detail;
